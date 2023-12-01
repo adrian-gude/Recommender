@@ -62,17 +62,15 @@ def plot_info_dataset (dataset,column,title,xlabel,ylabel):
         xlabel ([type]): [description]
         ylabel ([type]): [description]
     """
-
     user_column_count = dataset[column].value_counts()
-
-    column_count_per_user = user_column_count.value_counts()
-
-    plt.bar(column_count_per_user.index, column_count_per_user.values, color='blue')
+    
+    plt.bar(user_column_count.value_counts().index, user_column_count.value_counts().values, color='blue')
     plt.grid(True)
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.show()
+
 
 if __name__ == '__main__':
     data_path = "ml-latest-small/ratings.csv"
@@ -91,14 +89,26 @@ if __name__ == '__main__':
     print(cleaned_df.head())
     
     # Ejercicicio 3 
-    plot_info_dataset(cleaned_df,'userId','ratings by users','ratings by users','num ratings by user')
-    plot_info_dataset(cleaned_df,'movieId','ratings by movie by user','ratings by movie by user','num ratings by movie by user')
+    #plot_info_dataset(cleaned_df,'userId','ratings by users','ratings by users','num ratings by user')
+    # plt.show()
+    #plot_info_dataset(cleaned_df,'movieId','ratings by product','ratings by product','num ratings by product ')
+    # plt.show()
+    
+    cleaned_df["userId"].value_counts().plot(kind='hist', title='Puntuaciones por usuario')
+    plt.show()
 
-    #cleaned_df['userId'].value_counts().plot(kind='hist')
-    #plt.show()
+    # raw_df["userId"].value_counts().plot(kind='hist', title='Puntuaciones por usuario')
+    # plt.show()
+
+    cleaned_df["movieId"].value_counts().plot(kind='hist', title='Puntuaciones por producto')
+    plt.show()
 
 
     # Ejercicio 5 
+
+    cleaned_df["rating"].plot(kind='hist', title='Puntuaciones por rating')
+    plt.show()
+
     #plot_info_dataset(cleaned_df,'rating','Users by rating', 'rating', 'num users')
      
 
