@@ -15,9 +15,8 @@ from surprise import (
 )
 
 import copy
-
-def dict_to_frozenset(d):
-    return frozenset(sorted(d.items()))
+import wget
+from zipfile import ZipFile
 
 def precision_recall_at_k(predictions, k=10, threshold=3.5):
     """Return precision and recall at k metrics for each user"""
@@ -82,6 +81,19 @@ def set_my_folds(dataset, nfolds = 5, shuffle = True):
         folds.append((train_raw_ratings,test_raw_ratings))
        
     return folds
+
+
+def get_raw_dataset (url) : 
+
+    wget.download(url)
+    test_file_name = "ml-latest-small.zip"
+
+    with ZipFile(test_file_name, "r") as zip:
+        zip.extractall()
+
+    data_path = "ml-latest-small/ratings.csv"
+
+    return data_path
 
 
 
@@ -457,9 +469,10 @@ def plot_precision_recall_curves(algorithms, k_values):
 
 
 if __name__ == '__main__':
-    data_path = "ml-latest-small/ratings.csv"
 
+    data_path = get_raw_dataset('http://files.grouplens.org/datasets/movielens/ml-latest-small.zip')
     raw_df = pd.read_csv(data_path)
+
     cleaned_df = clean_dataset(raw_df)
 
     summarize_dataset_info(raw_df)
