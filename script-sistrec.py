@@ -502,36 +502,36 @@ if __name__ == '__main__':
    
     
     # Ejercicicio 3,4,5
-    # plot_info_dataset(cleaned_df)
+    plot_info_dataset(cleaned_df)
 
     # Ejercicio 6
     surpise_object,folds = create_surprise_object(cleaned_df)
 
     # Ejercicio 7 
-    #mean_mae_knn, most_common_knn_params, algo_knn, knn_std_deviation = validate_grid_search(surpise_object, folds,'KNNWithZScorePearson')
+    mean_mae_knn, most_common_knn_params, algo_knn, knn_std_deviation = validate_grid_search(surpise_object, folds,'KNNWithZScorePearson')
     # # Ejercicio 8 
-    # mean_mae_normal, most_common_normal_params, algo_normal, normal_std_deviation = validate_grid_search(surpise_object,folds,'NormalPredictor')
-    # mean_mae_svd, most_common_svd_params, algo_svd, svd_std_deviation = validate_grid_search(surpise_object,folds,'SVD')
+    mean_mae_normal, most_common_normal_params, algo_normal, normal_std_deviation = validate_grid_search(surpise_object,folds,'NormalPredictor')
+    mean_mae_svd, most_common_svd_params, algo_svd, svd_std_deviation = validate_grid_search(surpise_object,folds,'SVD')
 
 
 
-    # print('algorithm : ', algo_knn, 'MAE : ', mean_mae_knn, 'STD: ', knn_std_deviation, 'best params : ', most_common_knn_params)
-    # print('algorithm : ', algo_normal, 'MAE : ', mean_mae_normal,'STD: ', normal_std_deviation, 'best params : ', most_common_normal_params)    
-    # print('algorithm : ', algo_svd, 'MAE : ', mean_mae_svd, 'STD : ', svd_std_deviation, 'best params : ', most_common_svd_params) 
+    print('algorithm : ', algo_knn, 'MAE : ', mean_mae_knn, 'STD: ', knn_std_deviation, 'best params : ', most_common_knn_params)
+    print('algorithm : ', algo_normal, 'MAE : ', mean_mae_normal,'STD: ', normal_std_deviation, 'best params : ', most_common_normal_params)    
+    print('algorithm : ', algo_svd, 'MAE : ', mean_mae_svd, 'STD : ', svd_std_deviation, 'best params : ', most_common_svd_params) 
     
 
-    # if most_common_svd_params == []:
-    #     most_common_svd_params = 'N_factor_25'
+    if most_common_svd_params == []:
+        most_common_svd_params = 'N_factor_25'
 
-    # results = {
-    #     algo_knn+ str(most_common_knn_params) : mean_mae_knn,
-    #     algo_normal+ str(most_common_normal_params) : mean_mae_normal,
-    #     algo_svd+str(most_common_svd_params): mean_mae_svd
-    # }
+    results = {
+        algo_knn+ str(most_common_knn_params) : mean_mae_knn,
+        algo_normal+ str(most_common_normal_params) : mean_mae_normal,
+        algo_svd+str(most_common_svd_params): mean_mae_svd
+    }
 
-    # print(results)
+    print(results)
 
-    # plot_compare_result_algorithms(results)
+    plot_compare_result_algorithms(results)
 
     recomendation_task(surpise_object,folds,[NormalPredictor(),SVD(n_factors = 25),KNNWithZScore(verbose= False, k=25, k_min=1, sim_options= {'name': 'pearson'})])
    
