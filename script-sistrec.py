@@ -425,8 +425,6 @@ def plot_compare_result_algorithms (algorithms_result) :
 
 def recomendation_task (surprise_dataset,folds, algorithm_list): 
 
-    
-
     for algorithm in algorithm_list:
 
         precision_list = []
@@ -481,12 +479,6 @@ def recomendation_task (surprise_dataset,folds, algorithm_list):
     plt.legend(loc="center")
     plt.show()
 
-        
-    
-   
-
-
-
 
 
 if __name__ == '__main__':
@@ -533,6 +525,7 @@ if __name__ == '__main__':
 
     plot_compare_result_algorithms(results)
 
+    # Ejercicio 9
     recomendation_task(surpise_object,folds,[NormalPredictor(),SVD(n_factors = 25),KNNWithZScore(verbose= False, k=25, k_min=1, sim_options= {'name': 'pearson'})])
    
 
