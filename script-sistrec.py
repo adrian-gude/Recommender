@@ -8,6 +8,7 @@ from surprise.model_selection import cross_validate, KFold,GridSearchCV
 from collections import defaultdict
 from statistics import mean
 from collections import Counter
+import os.path as path
 
 from surprise import (  
     SVD,
@@ -85,27 +86,23 @@ def set_my_folds(dataset, nfolds = 5, shuffle = True):
 
 def get_raw_dataset (url) : 
 
-    wget.download(url)
-    test_file_name = "ml-latest-small.zip"
+    if path.exists('ml-latest-small'):
+        return 'ml-latest-small/ratings.csv'
+    
+    else : 
+        wget.download(url)
+        test_file_name = "ml-latest-small.zip"
 
-    with ZipFile(test_file_name, "r") as zip:
-        zip.extractall()
+        with ZipFile(test_file_name, "r") as zip:
+            zip.extractall()
 
-    data_path = "ml-latest-small/ratings.csv"
+        data_path = "ml-latest-small/ratings.csv"
 
-    return data_path
+        return data_path
 
 
 
 def summarize_dataset_info(dataset):
-    """
-    Function to sumarize the dataset and visualize the info  
-
-    Args:
-        data_path ([type]): [string]
-
-    """
-
     
     users = dataset['userId']
     rating = dataset['rating']
@@ -127,16 +124,6 @@ def summarize_dataset_info(dataset):
 
 
 def clean_dataset (dataset) : 
-    """
-    This function is used to remove items from the dataset. It takes a dataframe and removes all rows that has less than 10 products
-    and users with less than 20 scores
-
-    Args:
-        dataset (pd.Dataset): 
-
-    Returns:
-        cleaned_df : cleaned dataset
-    """
 
     product_counts = dataset['movieId'].value_counts()
     cleaned_df = dataset[dataset['movieId'].isin(product_counts[product_counts >= 10].index)]
@@ -147,16 +134,6 @@ def clean_dataset (dataset) :
     return cleaned_df 
 
 def plot_info_dataset (dataset): 
-    """
-    plot an histogram of the dataset
-
-    Args:
-        dataset ([type]): [description]
-        column ([type]): [description]
-        title ([type]): [description]
-        xlabel ([type]): [description]
-        ylabel ([type]): [description]
-    """
         
     df1 = dataset.groupby('userId')['rating'].mean().reset_index(name="rating")
     df2 = dataset.groupby('movieId')['rating'].mean().reset_index(name="rating")
@@ -172,7 +149,7 @@ def plot_info_dataset (dataset):
 
     plt.figure(figsize=(10, 6))
     plt.title('Puntuaciones por producto')
-    dataset['userId'].value_counts().plot(kind='hist')
+    dataset['movieId'].value_counts().plot(kind='hist')
     plt.xlabel('Número de Puntuaciones')
     plt.ylabel('Número de Productos')
     plt.show()  
@@ -229,11 +206,12 @@ def validate_grid_search (dataset, folds, algorithm):
 
     if algorithm == 'KNNWithZScorePearson' : 
         algo =  KNNWithZScore()
-        algo_param_grid = {'k': [25, 50, 100], 'min_k': [1, 2, 5], 'sim_options': {'name': ['pearson']}}
+        algo_param_grid = {'k': [25, 50, 100], 'min_k': [1, 2, 5],'verbose': [False], 'sim_options': {'name': ['pearson'], 'verbose':['false']}}
 
         print(algo.__class__)
         mae_list = []
         params_list = []
+        std_list = []
 
 
         for i, (train_ratings, test_ratings) in enumerate(folds):
@@ -255,9 +233,11 @@ def validate_grid_search (dataset, folds, algorithm):
             min_k_value = min_row['param_k']
             min_para_min_k_value = min_row['param_min_k']
 
+            std_list.append(results_df['std_test_mae'])
+
             params_list.append((min_k_value,min_para_min_k_value))
             print('min ', results_df['mean_test_mae'].min())
-
+         
             # best MAE score    
             print('Grid search>\nmae=%.3f, cfg=%s' % (knn_gs.best_score['mae'], knn_gs.best_params['mae']))
 
@@ -294,7 +274,10 @@ def validate_grid_search (dataset, folds, algorithm):
 
         print(f"La mejor combinación es: {most_common_params}")
 
-        return mean_mae, most_common_params,algorithm
+        std_deviation = np.mean(std_list)
+        print(f"Standard Deviation of MAE: {std_deviation}")
+
+        return mean_mae, most_common_params,algorithm,std_deviation
     
     elif algorithm == 'NormalPredictor' : 
         most_common_params = []
@@ -304,6 +287,7 @@ def validate_grid_search (dataset, folds, algorithm):
         print(algo.__class__)
         mae_list = []
         params_list = []
+        std_list = []
 
         for i, (train_ratings, test_ratings) in enumerate(folds):
             print('Fold: %d' % i)
@@ -319,6 +303,7 @@ def validate_grid_search (dataset, folds, algorithm):
             print(results_df)
            
             print('min ', results_df['mean_test_mae'].min())
+            std_list.append(results_df['std_test_mae'])
 
             # best MAE score    
             print('Grid search>\nmae=%.3f, cfg=%s' % (knn_gs.best_score['mae'], knn_gs.best_params['mae']))
@@ -344,12 +329,15 @@ def validate_grid_search (dataset, folds, algorithm):
 
         # Extraer la columna de MAE
         print(mae_list)
-    
+        
         # Calcular la media del MAE
         mean_mae = mean(fold[1] for fold in mae_list)
 
+        # desviación típica es la raíz cuadrada de los valores medios de las diferencias al cuadrado entre cada MAE y el MAE medio. 
+        std_deviation = np.mean(std_list)
 
-        return mean_mae, most_common_params,algorithm
+        print(f"Standard Deviation of MAE: {std_deviation}")
+        return mean_mae, most_common_params,algorithm,std_deviation
 
     elif algorithm == 'SVD' : 
         most_common_params = []
@@ -359,6 +347,7 @@ def validate_grid_search (dataset, folds, algorithm):
         print(algo.__class__)
         mae_list = []
         params_list = []
+        std_list = []
 
         for i, (train_ratings, test_ratings) in enumerate(folds):
             print('Fold: %d' % i)
@@ -373,9 +362,8 @@ def validate_grid_search (dataset, folds, algorithm):
             results_df = pd.DataFrame.from_dict(knn_gs.cv_results)
             print(results_df)
            
-            # min_k_value = min_row['param_k']
-            # min_para_min_k_value = min_row['param_min_k']
-            print('min ', results_df['mean_test_mae'].min())
+            std_list.append(results_df['std_test_mae'])
+
 
             # best MAE score    
             print('Grid search>\nmae=%.3f, cfg=%s' % (knn_gs.best_score['mae'], knn_gs.best_params['mae']))
@@ -400,12 +388,22 @@ def validate_grid_search (dataset, folds, algorithm):
 
         # Extraer la columna de MAE
         print(mae_list)
-    
+
+
         # Calcular la media del MAE
         mean_mae = mean(fold[1] for fold in mae_list)
 
+        # desviación típica es la raíz cuadrada de los valores medios de las diferencias al cuadrado entre cada MAE y el MAE medio. 
+        #print(f"Standard Deviation of MAE List: {np.mean(std_list)}")
+        std_deviation = np.mean(std_list)
 
-        return mean_mae, most_common_params,algorithm
+        #print(f"Standard Deviation of MAE: {std_deviation}")
+    
+        return mean_mae, most_common_params,algorithm,std_deviation
+            
+    
+
+
     
     
 def plot_compare_result_algorithms (algorithms_result) : 
@@ -423,49 +421,72 @@ def plot_compare_result_algorithms (algorithms_result) :
     # Mostrar el gráfico
     plt.show()
 
-
-def train_Prediction(data, algo, folds, k):
-    precisionList = []
-    recallList = []
-
-    for (train_ratings, test_ratings) in folds:
-        train_dataset = copy.deepcopy(data)
-        train_dataset.raw_ratings = train_ratings
-        algo.fit(train_dataset)
-
-   
-        test_dataset = copy.deepcopy(data)
-        test_dataset.raw_ratings = test_ratings
-        test_set = test_dataset.construct_testset(raw_testset=test_ratings)
-
-        predictions = algo.test(test_set)
-        precisions, recalls = precision_recall_at_k(predictions, k=k, threshold=4)
-
-        precisionList.append(sum(prec for prec in precisions.values()) / len(precisions))
-        recallList.append(sum(rec for rec in recalls.values()) / len(recalls))
-
-    return mean(precisionList), mean(recallList)
-
-
-
- 
-def plot_precision_recall_curves(algorithms, k_values):
     
-    for algo_name, algo_results in algorithms.items():
-        plt.figure(figsize=(10, 6))
-        for k in k_values:
-            precisions = [fold['precisions'][k] for fold in algo_results]
-            recalls = [fold['recalls'][k] for fold in algo_results]
-            avg_precision = np.mean(precisions)
-            avg_recall = np.mean(recalls)
 
-            plt.scatter(avg_recall, avg_precision, label=f'k={k}', marker='o')
+def recomendation_task (surprise_dataset,folds, algorithm_list): 
 
-        plt.title(f'Precision-Recall Curve for {algo_name}')
-        plt.xlabel('Recall')
-        plt.ylabel('Precision')
-        plt.legend()
-        plt.show()
+    
+
+    for algorithm in algorithm_list:
+
+        precision_list = []
+        recall_list = []
+
+        for item in [1,2,5,10]: 
+
+            precision_list_fold = []
+            recall_list_fold = []
+
+            for i, (train_ratings, test_ratings) in enumerate(folds):
+
+                print('Fold: %d' % i)
+                train_dataset = copy.deepcopy(surprise_dataset)
+                train_dataset.raw_ratings = train_ratings
+                
+                # We train the algorithm with the whole train set
+                algorithm.fit(train_dataset.build_full_trainset())
+
+                # test parameter must be a testset
+                test_dataset = copy.deepcopy(surprise_dataset)
+                test_dataset.raw_ratings = test_ratings
+                test_set = test_dataset.construct_testset(raw_testset=test_ratings)
+
+                predictions = algorithm.test(test_set)
+
+                # Compute and print MAE
+                print('Test>')
+
+                precisions, recalls = precision_recall_at_k(predictions, item, threshold=4)
+                precision,recall = sum(prec for prec in precisions.values()) / len(precisions), sum(rec for rec in recalls.values()) / len(recalls)
+                
+
+                precision_list_fold.append(precision)
+                recall_list_fold.append(recall)
+
+                print(precision_list_fold)
+                print(recall_list_fold)
+
+
+            precision_list.append(np.mean(precision_list_fold))
+            recall_list.append(np.mean(recall_list_fold))
+
+
+        plt.plot(recall_list, precision_list,label=str(algorithm))
+    
+        print('recall_list: ')
+        print(recall_list)
+        print('recision_list: ')
+        print(precision_list)
+
+    plt.legend(loc="center")
+    plt.show()
+
+        
+    
+   
+
+
+
 
 
 if __name__ == '__main__':
@@ -481,61 +502,39 @@ if __name__ == '__main__':
    
     
     # Ejercicicio 3,4,5
-    #plot_info_dataset(cleaned_df)
+    # plot_info_dataset(cleaned_df)
 
     # Ejercicio 6
     surpise_object,folds = create_surprise_object(cleaned_df)
 
     # Ejercicio 7 
-    mean_mae_knn, most_common_knn_params, algo_knn = validate_grid_search(surpise_object, folds,'KNNWithZScorePearson')
-    #print('algorithm : ', algo_knn, 'MAE : ', mean_mae_knn, 'best params : ', most_common_knn_params)
-
+    #mean_mae_knn, most_common_knn_params, algo_knn, knn_std_deviation = validate_grid_search(surpise_object, folds,'KNNWithZScorePearson')
     # # Ejercicio 8 
-    mean_mae_normal, most_common_normal_params, algo_normal = validate_grid_search(surpise_object,folds,'NormalPredictor')
-    #print('algorithm : ', algo_normal, 'MAE : ', mean_mae_normal, 'best params : ', most_common_normal_params)    
+    # mean_mae_normal, most_common_normal_params, algo_normal, normal_std_deviation = validate_grid_search(surpise_object,folds,'NormalPredictor')
+    # mean_mae_svd, most_common_svd_params, algo_svd, svd_std_deviation = validate_grid_search(surpise_object,folds,'SVD')
+
+
+
+    # print('algorithm : ', algo_knn, 'MAE : ', mean_mae_knn, 'STD: ', knn_std_deviation, 'best params : ', most_common_knn_params)
+    # print('algorithm : ', algo_normal, 'MAE : ', mean_mae_normal,'STD: ', normal_std_deviation, 'best params : ', most_common_normal_params)    
+    # print('algorithm : ', algo_svd, 'MAE : ', mean_mae_svd, 'STD : ', svd_std_deviation, 'best params : ', most_common_svd_params) 
     
-    mean_mae_svd, most_common_svd_params, algo_svd = validate_grid_search(surpise_object,folds,'SVD')
-    #print('algorithm : ', algo_svd, 'MAE : ', mean_mae_svd, 'best params : ', most_common_svd_params) 
-    
 
-    if most_common_svd_params == []:
-        most_common_svd_params = 'N_factor_25'
+    # if most_common_svd_params == []:
+    #     most_common_svd_params = 'N_factor_25'
 
-    results = {
-        algo_knn+ str(most_common_knn_params) : mean_mae_knn,
-        algo_normal+ str(most_common_normal_params) : mean_mae_normal,
-        algo_svd+str(most_common_svd_params): mean_mae_svd
-    }
+    # results = {
+    #     algo_knn+ str(most_common_knn_params) : mean_mae_knn,
+    #     algo_normal+ str(most_common_normal_params) : mean_mae_normal,
+    #     algo_svd+str(most_common_svd_params): mean_mae_svd
+    # }
 
-    normalPredictor = NormalPredictor()
-    
-    dataAlgo = {}
-    precisionAlg = []
-    recallAlg = []
+    # print(results)
 
-    plt.figure(figsize=(16, 11))
-    plt.suptitle("PRECISION RECALL")
-    plt.xlabel("Recall")
-    plt.ylabel("Precision")
+    # plot_compare_result_algorithms(results)
 
-
-    #train_Prediction(data, normalPredictor, kf)
-    knnWithZScorePearson = KNNWithZScore(k=50, min_k=2, sim_options={'name': 'pearson'})
-    for lenList in [1,2,5,10]:
-        precisions, recalls = train_Prediction(surpise_object, knnWithZScorePearson, folds, lenList)
-        precisionAlg.append(precisions)
-        recallAlg.append(recalls)
-
-    plt.plot(recallAlg,
-            precisionAlg,
-            color='red',
-            label='normalPredictor')
-    dataAlgo['normalPredictor'] = {'precision': precisionAlg, 'recall': recallAlg}
-    plt.show()
-
-
-
-
+    recomendation_task(surpise_object,folds,[NormalPredictor(),SVD(n_factors = 25),KNNWithZScore(verbose= False, k=25, k_min=1, sim_options= {'name': 'pearson'})])
+   
 
 
 
